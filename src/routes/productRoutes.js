@@ -1,8 +1,22 @@
 import express from 'express';
+import {
+	crearProducto,
+	obtenerProductos,
+	obtenerProductoPorId,
+	actualizarProducto,
+	eliminarProducto,
+} from '../controllers/productController.js';
+import { protegerRuta } from '../middlewares/authMiddleware.js';
+
 const router = express.Router();
 
-router.get('/', (req, res) => {
-	res.send('Rutas de productos funcionando correctamente ');
-});
+// Rutas públicas
+router.get('/', obtenerProductos);
+router.get('/:id', obtenerProductoPorId);
+
+// Rutas protegidas
+router.post('/', protegerRuta, crearProducto);
+router.put('/:id', protegerRuta, actualizarProducto);
+router.delete('/:id', protegerRuta, eliminarProducto);
 
 export default router;
