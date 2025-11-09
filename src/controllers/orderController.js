@@ -74,3 +74,37 @@ export const obtenerTodosPedidos = async (req, res) => {
 		res.status(500).json({ mensaje: 'Error al obtener todos los pedidos' });
 	}
 };
+
+// Actualizar estado del pedido
+export const actualizarEstadoPedido = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { estado } = req.body;
+
+		const pedido = await Order.findById(id);
+		if (!pedido) {
+			return res.status(404).json({ mensaje: 'Pedido no encontrado' });
+		}
+
+		const estadosValidos = [
+			'pendiente',
+			'pagado',
+			'enviado',
+			'entregado',
+			'cancelado',
+		];
+		if (!estadosValidos.includes(estado)) {
+			return res.status(400).json({ mensaje: 'Estado no válido' });
+		}
+
+		pedido.estado = estado;
+		const actualizado = await pedido.save();
+
+		res.json({ mensaje: 'Estado del pedido actualizado', pedido: actualizado });
+	} catch (error) {
+		res.status(500).json({
+			mensaje: 'Error al actualizar estado del pedido',
+			error: error.message,
+		});
+	}
+};

@@ -21,3 +21,23 @@ export const protegerRuta = async (req, res, next) => {
 	if (!token)
 		return res.status(401).json({ mensaje: 'No autorizado, sin token' });
 };
+
+export const admin = (req, res, next) => {
+	if (req.user && req.user.rol === 'admin') {
+		next();
+	} else {
+		res
+			.status(403)
+			.json({ mensaje: 'Acceso denegado: se requiere rol administrador' });
+	}
+};
+
+export const vendedorOAdmin = (req, res, next) => {
+	if (req.user && (req.user.rol === 'vendedor' || req.user.rol === 'admin')) {
+		next();
+	} else {
+		res
+			.status(403)
+			.json({ mensaje: 'Acceso denegado: se requiere rol vendedor o admin' });
+	}
+};

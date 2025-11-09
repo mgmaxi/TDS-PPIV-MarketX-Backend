@@ -3,13 +3,22 @@ import {
 	crearPedido,
 	obtenerMisPedidos,
 	obtenerTodosPedidos,
+	actualizarEstadoPedido,
 } from '../controllers/orderController.js';
-import { protect } from '../middlewares/authMiddleware.js';
+import { protect, vendedorOAdmin } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', protect, crearPedido); // Crear pedido
-router.get('/mis-pedidos', protect, obtenerMisPedidos); // Ver los propios
-router.get('/', protect, obtenerTodosPedidos); // Ver todos
+// Crear pedido (cliente)
+router.post('/', protect, crearPedido);
+
+// Ver mis pedidos
+router.get('/mis-pedidos', protect, obtenerMisPedidos);
+
+// Ver todos (vendedor/admin)
+router.get('/', protect, vendedorOAdmin, obtenerTodosPedidos);
+
+// Actualizar estado (vendedor/admin)
+router.put('/:id/estado', protect, vendedorOAdmin, actualizarEstadoPedido);
 
 export default router;
