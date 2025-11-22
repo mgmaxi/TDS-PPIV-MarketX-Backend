@@ -34,31 +34,50 @@ export const obtenerProductos = async (req, res) => {
 		const limit = Number(req.query.limit) || 10;
 		const skip = (page - 1) * limit;
 
-		// Filtros
 		const filtro = {};
 
-		// Filtro por Vendedor
+		// --- FILTROS BÁSICOS ---
+
+		// 1. Vendedor (Match Exacto por ID)
 		if (req.query.vendedor) {
 			filtro.vendedor = req.query.vendedor;
 		}
 
-		// Búsqueda por nombre
+		// 2. Activo (Match Booleano)
+		if (req.query.activo) {
+			filtro.activo = req.query.activo === 'true';
+		}
+
+		// --- BÚSQUEDAS FLEXIBLES (REGEX) ---
+
+		// 3. Nombre (Insensible a mayúsculas)
 		if (req.query.nombre) {
 			filtro.nombre = { $regex: req.query.nombre, $options: 'i' };
 		}
 
+		// 4. Categoría
 		if (req.query.categoria) {
-			filtro.categoria = req.query.categoria;
+			filtro.categoria = { $regex: req.query.categoria, $options: 'i' };
 		}
 
-		// Rangos de precio
+		// --- RANGOS ---
+
+		// 5. Precio (Min y Max)
 		if (req.query.min || req.query.max) {
 			filtro.precio = {};
 			if (req.query.min) filtro.precio.$gte = Number(req.query.min);
 			if (req.query.max) filtro.precio.$lte = Number(req.query.max);
 		}
 
-		// Ordenamiento
+		// 6. Solo con Stock
+		if (req.query.conStock === 'true') {
+			filtro.stock = { $gt: 0 }; // Stock mayor a 0
+		}
+		// 7. Filtro de Stock Máximo
+		if (req.query.stockMax) {
+			filtro.stock = { $gt: 0, $lte: Number(req.query.stockMax) };
+		}
+		// --- ORDENAMIENTO ---
 		const camposPermitidos = [
 			'precio',
 			'nombre',
@@ -78,6 +97,7 @@ export const obtenerProductos = async (req, res) => {
 			}
 		}
 
+		// --- EJECUCIÓN ---
 		const total = await Product.countDocuments(filtro);
 		const productos = await Product.find(filtro)
 			.populate('vendedor', 'nombre email')
@@ -118,14 +138,14 @@ export const obtenerProductoPorId = async (req, res) => {
 	}
 };
 
-// 4. ACTUALIZAR (Sirve para Editar y para Activar/Desactivar)
+// 4. ACTUALIZAR
 export const actualizarProducto = async (req, res) => {
 	try {
 		const producto = await Product.findById(req.params.id);
 		if (!producto)
 			return res.status(404).json({ mensaje: 'Producto no encontrado' });
 
-		// Permisos
+		// Verificar permisos
 		if (
 			producto.vendedor.toString() !== req.user._id.toString() &&
 			req.user.rol !== 'admin'
@@ -135,10 +155,9 @@ export const actualizarProducto = async (req, res) => {
 				.json({ mensaje: 'No tienes permiso para editar este producto' });
 		}
 
-		// Aquí se actualiza todo, incluido si el frontend manda "activo: false"
 		Object.assign(producto, req.body);
-
 		const productoActualizado = await producto.save();
+
 		res.json(productoActualizado);
 	} catch (error) {
 		console.error('Error al actualizar:', error);
@@ -146,16 +165,15 @@ export const actualizarProducto = async (req, res) => {
 	}
 };
 
-// 5. ELIMINAR PRODUCTO (HARD DELETE)
+// 5. ELIMINAR (Hard Delete)
 export const eliminarProducto = async (req, res) => {
 	try {
-		// 1. Buscamos el producto primero
 		const producto = await Product.findById(req.params.id);
 
 		if (!producto)
 			return res.status(404).json({ mensaje: 'Producto no encontrado' });
 
-		// 2. Verificamos permisos (Seguridad crítica)
+		// Verificar permisos
 		if (
 			producto.vendedor.toString() !== req.user._id.toString() &&
 			req.user.rol !== 'admin'
@@ -165,12 +183,10 @@ export const eliminarProducto = async (req, res) => {
 				.json({ mensaje: 'No tienes permiso para eliminar este producto' });
 		}
 
-		// 3. BORRADO REAL DE LA BASE DE DATOS
+		// Borrado físico de la base de datos
 		await producto.deleteOne();
 
-		res.json({
-			mensaje: 'Producto eliminado permanentemente de la base de datos',
-		});
+		res.json({ mensaje: 'Producto eliminado permanentemente' });
 	} catch (error) {
 		console.error('Error al eliminar:', error);
 		res.status(500).json({ mensaje: error.message });
